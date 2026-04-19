@@ -16,7 +16,6 @@ void setup() {
 }
 
 void loop() {
-  uint_8 code = 1; //placeholder value for now
-  esp_now_send(broadcastAddress, code, 1);
-  delay(2000); 
+  uint8_t code = 1; //placeholder value for now
+  esp_now_send(broadcastAddress, &code, 1);
 }
