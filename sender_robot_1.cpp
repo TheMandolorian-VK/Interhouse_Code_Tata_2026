@@ -2,11 +2,10 @@
 #include <esp_now.h>
 #include <WiFi.h>
 
-// REPLACE WITH YOUR RECEIVER'S MAC ADDRESS
 uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 void setup() {
-  WiFi.mode(WIFI_STA); // Must be in station mode
+  WiFi.mode(WIFI_STA);
   esp_now_init();
 
   esp_now_peer_info_t peer = {};
