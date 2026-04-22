@@ -1,20 +1,67 @@
-// Include libraries
-#include <esp_now.h>
-#include <WiFi.h>
+bool running = True;
 
-uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+class Vehicle{
+  private:
+    int _leftIR, _rightIR, _motorL1, _motorR2, _motorL2, _motorR1, _enA, _enB;
+  public:
+    Vehicle(int leftIR, int rightIR, int motorL1, int motorR1, int motorL2, int motorR2, int enA, int enB){
+      _leftIR = leftIR;
+      _rightIR = rightIR;
+      _motorL1 = motorL1;
+      _motorR1 = motorR1;
+      _motorL2 = motorL2;
+      _motorR2 = motorR2;
+      _enA = enA;
+      _enB = enB;
 
-void setup() {
-  WiFi.mode(WIFI_STA);
-  esp_now_init();
+      pinMode(_leftIR, INPUT);
+      pinMode(_rightIR, INPUT);
+      pinMode(_motorR1, OUTPUT);
+      pinMode(_motorL1, OUTPUT);
+      pinMode(_motorR2, OUTPUT);
+      pinMode(_motorL2, OUTPUT);
+      pinMode(_enA, OUTPUT);
+      pinMode(_enB, OUTPUT);
 
-  esp_now_peer_info_t peer = {};
-  memcpy(peer.peer_addr, broadcastAddress, 6);
-  esp_now_add_peer(&peer);
-    
+      analogWrite(_enA, 200); 
+      analogWrite(_enB, 200);
+      
+    }
+
+  void moveForward(){
+    digitalWrite(_motorL1, HIGH);
+    digitalWrite(_motorL2, HIGH);
+    digitalWrite(_motorR1, HIGH);
+    digitalWrite(_motorR2, HIGH); 
+  }
+  void turnLeft(){
+    digitalWrite(_motorL1, HIGH);
+    digitalWrite(_motorL2, HIGH);
+    digitalWrite(_motorR1, LOW);
+    digitalWrite(_motorR2, LOW); 
+  }
+  void turnRight(){
+    digitalWrite(_motorL1, LOW);
+    digitalWrite(_motorL2, LOW);
+    digitalWrite(_motorR1, HIGH);
+    digitalWrite(_motorR2, HIGH); 
+  }
+  void returnSensorStates(){
+    int sensorLeftState = digitalRead(_enA);
+    int sensorRightState = digitalRead(_enB);
+    return sensorLeftState, sensorRightState;
+  }
+};
+
+void setup(){
+  Vehicle LineFollower(1, 2, 3, 4, 5, 6, 7, 8);
+  //enter in pin numbers tomorrow after checking connections
 }
 
-void loop() {
-  uint8_t code = 1; //placeholder value for now
-  esp_now_send(broadcastAddress, &code, 1);
+void loop(){
+  while(running){
+    sLstate, sRstate = LineFollower.returnSensorStates();
+    if 
+  
+  }
 }
