@@ -1,4 +1,4 @@
-bool running = True;
+bool running = true;
 
 class Vehicle{
   private:
@@ -29,39 +29,49 @@ class Vehicle{
     }
 
   void moveForward(){
-    digitalWrite(_motorL1, HIGH);
-    digitalWrite(_motorL2, HIGH);
-    digitalWrite(_motorR1, HIGH);
-    digitalWrite(_motorR2, HIGH); 
+    digitalWrite(_motorL1, HIGH); digitalWrite(_motorL2, LOW);
+    digitalWrite(_motorR1, HIGH); digitalWrite(_motorR2, LOW); 
   }
   void turnLeft(){
-    digitalWrite(_motorL1, HIGH);
-    digitalWrite(_motorL2, HIGH);
-    digitalWrite(_motorR1, LOW);
-    digitalWrite(_motorR2, LOW); 
+    digitalWrite(_motorL1, LOW); digitalWrite(_motorL2, LOW);
+    digitalWrite(_motorR1, LOW); digitalWrite(_motorR2, HIGH); 
   }
   void turnRight(){
-    digitalWrite(_motorL1, LOW);
-    digitalWrite(_motorL2, LOW);
-    digitalWrite(_motorR1, HIGH);
-    digitalWrite(_motorR2, HIGH); 
+    digitalWrite(_motorL1, LOW); digitalWrite(_motorL2, HIGH);
+    digitalWrite(_motorR1, LOW); digitalWrite(_motorR2, LOW); 
   }
-  void returnSensorStates(){
-    int sensorLeftState = digitalRead(_enA);
-    int sensorRightState = digitalRead(_enB);
-    return sensorLeftState, sensorRightState;
+  void stop(){
+    digitalWrite(_motorL1, LOW); digitalWrite(_motorL2, LOW);
+    digitalWrite(_motorR1, LOW); digitalWrite(_motorR2, LOW);
   }
+  bool returnLSensorState(){
+    int sensorLeftState = digitalRead(_leftIR);
+    return sensorLeftState;
+  }
+  bool returnRSensorState(){
+    int sensorRightState = digitalRead(_rightIR);
+    return sensorRightState;
+  }
+  
 };
 
+Vehicle LineFollower(1, 2, 3, 4, 5, 6, 7, 8);
+
 void setup(){
-  Vehicle LineFollower(1, 2, 3, 4, 5, 6, 7, 8);
   //enter in pin numbers tomorrow after checking connections
 }
 
 void loop(){
   while(running){
-    sLstate, sRstate = LineFollower.returnSensorStates();
-    if 
+    bool sLstate = LineFollower.returnLSensorState();
+    bool sRstate = LineFollower.returnRSensorState();
+    if(sLState == LOW && sRstate == LOW){
+      LineFollower.moveForward();
+    }else if(slState == LOW && sRstate == HIGH){
+      LineFollower.turnRight();
+    }else if(slState == HIGH && sRstate == LOW){
+      LineFollower.turnLeft();
+    }
   
   }
 }
