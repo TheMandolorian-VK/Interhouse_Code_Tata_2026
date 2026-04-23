@@ -5,6 +5,8 @@ const uint8_t leftIR = 12, rightIR = 13, motorL1 = 22, motorL2 = 21, motorR1 = 1
 class Vehicle {
   private:
     int _leftIR, _rightIR, _motorL1, _motorL2, _motorR1, _motorR2, _enA, _enB;
+    const int freq = 5000;
+    const int res = 8; 
   public:
     Vehicle(int leftIR, int rightIR, int motorL1, int motorR1, int motorL2, int motorR2, int enA, int enB) {
       _leftIR = leftIR;
@@ -25,8 +27,10 @@ class Vehicle {
       pinMode(_enA, OUTPUT);
       pinMode(_enB, OUTPUT);
   
-      analogWrite(_enA, 150);
-      analogWrite(_enB, 150);
+      ledcAttach(_enA, freq, res);
+      ledcAttach(_enB, freq, res);
+      ledcWrite(_enA, 150);
+      ledcWrite(_enB, 150);
     }
   
     void moveForward() {
@@ -58,7 +62,8 @@ class Vehicle {
 Vehicle LineFollower(leftIR, rightIR, motorL1, motorL2, motorR1, motorR2, enA, enB);
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
+  LineFollower.init()
 }
 
 void loop() {
