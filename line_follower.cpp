@@ -1,6 +1,6 @@
 bool running = true;
 
-const uint8_t leftIR = 12, rightIR = 13, motorL1 = 22, motorL2 = 21, motorR1 = 19, motorR2 = 18, enA = 23, enB = 5;
+const uint8_t leftIR = 12, rightIR = 13, int out1 = 22, out2 = 21, enA = 23, out3 = 19, out4 = 18, enB = 15;
 
 class Vehicle {
   private:
@@ -59,7 +59,7 @@ class Vehicle {
     }
 };
 
-Vehicle LineFollower(leftIR, rightIR, motorL1, motorL2, motorR1, motorR2, enA, enB);
+Vehicle LineFollower(leftIR, rightIR, out1, out2, out3, out4, enA, enB);
 
 void setup() {
   Serial.begin(115200);
