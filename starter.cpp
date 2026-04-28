@@ -7,8 +7,8 @@ void setup(){
   pinMode(out4, OUTPUT);
   pinMode(enA, OUTPUT);
   pinMode(enB, OUTPUT);
-  analogWrite(enA, 200);
-  analogWrite(enB, 200);
+  analogWrite(enA, 90);
+  analogWrite(enB, 100);
   Serial.begin(9600);
 }
 
