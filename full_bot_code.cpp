@@ -10,6 +10,7 @@ const char* password = "trueassteel";
 
 // Global Variables to store GUI states
 String currentCommand = "stop";
+String lastCommand = "stop";
 int linearPWM = 160;
 int turnPWM = 140;
 int enAspeed, enBspeed;
@@ -351,31 +352,34 @@ void setup() {
   server.on("/mode", HTTP_GET, [](AsyncWebServerRequest *request){
     if (request->hasParam("val")) {
       currentMode = request->getParam("val")->value().toInt();
-      stopMotors(); // Safety reset on mode change
+      lastCommand = "mode_change_reset"; // Force Manual mode to refresh state
+      stopMotors(); 
     }
     request->send(200, "text/plain", "OK");
   });
-
   server.begin();
 }
 
 void loop() {
   // Use a switch case or if statements to separate your logic
   if (currentMode == 0) {
-    if (currentCommand == "forward") {
-      moveForward(linearPWM);
-    } 
-    else if (currentCommand == "backward") {
-      moveBackward(linearPWM);
-    }
-    else if (currentCommand == "left"){
-      turnLeft(turnPWM, "Manual");  
-    }
-    else if (currentCommand == "right"){
-      turnRight(turnPWM, "Manual");  
-    }
-    else if(currentCommand == "stop"){
-      stopMotors();
+    if(lastCommand != currentCommand){
+      if (currentCommand == "forward") {
+        moveForward(linearPWM);
+      } 
+      else if (currentCommand == "backward") {
+        moveBackward(linearPWM);
+      }
+      else if (currentCommand == "left"){
+        turnLeft(turnPWM, "Manual");  
+      }
+      else if (currentCommand == "right"){
+        turnRight(turnPWM, "Manual");  
+      }
+      else if(currentCommand == "stop"){
+        stopMotors();
+      }
+      lastCommand = currentCommand;
     }
   } 
   else if (currentMode == 1) {
@@ -411,5 +415,4 @@ void loop() {
     // please do replace this with ultrasonic code
     stopMotors();
   }
-
 }
