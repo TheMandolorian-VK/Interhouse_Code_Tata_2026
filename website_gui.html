@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tata House Bot Control</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-bg: #9e2a0d;
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --accent: #ffffff;
+            --danger: #ff4b2b;
+            --btn-idle: rgba(0, 0, 0, 0.3);
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            text-align: center; 
+            background-color: var(--primary-bg); 
+            color: white;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            user-select: none;
+        }
+
+        h1 { 
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            margin-bottom: 30px;
+            font-size: 1.8rem;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .controls-container {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .grid-container { 
+            display: grid; 
+            grid-template-columns: repeat(3, 80px); 
+            grid-template-rows: repeat(3, 80px);
+            gap: 15px; 
+            margin-bottom: 30px;
+        }
+
+        button { 
+            width: 80px;
+            height: 80px;
+            font-size: 22px; 
+            border-radius: 50%; 
+            border: none; 
+            cursor: pointer; 
+            background: var(--btn-idle); 
+            color: white; 
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            outline: none;
+        }
+
+        button:hover { background: rgba(255,255,255,0.2); }
+        
+        button:active, .active-key { 
+            background: white !important; 
+            color: var(--primary-bg) !important;
+            transform: scale(0.92);
+            box-shadow: 0 0 20px rgba(255,255,255,0.4);
+        }
+
+        .stop { 
+            background: var(--danger);
+            font-size: 28px;
+        }
+
+        .slider-section {
+            margin: 10px 0;
+            width: 100%;
+            max-width: 270px;
+        }
+
+        .slider-label {
+            font-weight: 700;
+            font-size: 11px;
+            letter-spacing: 2px;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .slider { 
+            -webkit-appearance: none;
+            width: 100%; 
+            height: 8px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.2);
+            outline: none;
+            margin-bottom: 5px;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+        }
+
+        .mode-btn { 
+            width: 100%;
+            max-width: 270px;
+            border-radius: 50px; 
+            padding: 18px; 
+            background: transparent; 
+            font-weight: 800;
+            font-size: 14px;
+            border: 2px solid white;
+            color: white;
+            letter-spacing: 1.5px;
+            margin-top: 25px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Tata House: Interhouse Bot GUI</h1>
+
+    <div class="controls-container">
+        <div class="grid-container">
+            <div></div>
+            <button id="btn-forward" onmousedown="sendCmd('forward')" onmouseup="sendCmd('stop')" ontouchstart="sendCmd('forward')" ontouchend="sendCmd('stop')">▲</button>
+            <div></div>
+            
+            <button id="btn-left" onmousedown="sendCmd('left')" onmouseup="sendCmd('stop')" ontouchstart="sendCmd('left')" ontouchend="sendCmd('stop')">◀</button>
+            <button id="btn-stop" class="stop" onclick="sendCmd('stop')">■</button>
+            <button id="btn-right" onmousedown="sendCmd('right')" onmouseup="sendCmd('stop')" ontouchstart="sendCmd('right')" ontouchend="sendCmd('stop')">▶</button>
+            
+            <div></div>
+            <button id="btn-backward" onmousedown="sendCmd('backward')" onmouseup="sendCmd('stop')" ontouchstart="sendCmd('backward')" ontouchend="sendCmd('stop')">▼</button>
+            <div></div>
+        </div>
+
+        <div class="slider-section">
+            <span class="slider-label">POWER (LEFT): <span id="speedValLeft">150</span></span>
+            <input type="range" min="0" max="255" value="150" class="slider" id="pwmSliderLeft" oninput="updateSpeedLeft(this.value)">
+            
+            <span class="slider-label">POWER (RIGHT): <span id="speedValRight">150</span></span>
+            <input type="range" min="0" max="255" value="150" class="slider" id="pwmSliderRight" oninput="updateSpeedRight(this.value)">
+        </div>
+
+        <button class="mode-btn" id="modeBtn" onclick="toggleMode()">MODE: MANUAL</button>
+    </div>
+
+    <script>
+        let modes = ["MANUAL", "LINE FOLLOWER", "OBSTACLE DETECTION"];
+        let currentModeIndex = 0;
+        let activeKey = null;
+
+        const keyMap = {
+            "ArrowUp": { cmd: "forward", id: "btn-forward" },
+            "ArrowDown": { cmd: "backward", id: "btn-backward" },
+            "ArrowLeft": { cmd: "left", id: "btn-left" },
+            "ArrowRight": { cmd: "right", id: "btn-right" },
+            " ": { cmd: "stop", id: "btn-stop" }
+        };
+
+        function sendCmd(command) {
+            fetch('/control?cmd=' + command).catch(() => {});
+        }
+
+        function updateSpeedLeft(val) {
+            document.getElementById('speedValLeft').innerText = val;
+            fetch('/speed?side=L&val=' + val).catch(() => {});
+        }
+
+        function updateSpeedRight(val) {
+            document.getElementById('speedValRight').innerText = val;
+            fetch('/speed?side=R&val=' + val).catch(() => {});
+        }
+
+        function toggleMode() {
+            currentModeIndex = (currentModeIndex + 1) % modes.length;
+            document.getElementById('modeBtn').innerText = "MODE: " + modes[currentModeIndex];
+            fetch('/mode?val=' + currentModeIndex).catch(() => {});
+        }
+
+        window.addEventListener("keydown", (e) => {
+            if (keyMap[e.key] && activeKey !== e.key) {
+                e.preventDefault();
+                activeKey = e.key;
+                document.getElementById(keyMap[e.key].id).classList.add("active-key");
+                sendCmd(keyMap[e.key].cmd);
+            }
+        });
+
+        window.addEventListener("keyup", (e) => {
+            if (keyMap[e.key] && activeKey === e.key) {
+                activeKey = null;
+                document.getElementById(keyMap[e.key].id).classList.remove("active-key");
+                sendCmd("stop");
+            }
+        });
+    </script>
+</body>
+</html>
