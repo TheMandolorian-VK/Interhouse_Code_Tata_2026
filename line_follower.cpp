@@ -1,84 +1,125 @@
-bool running = true;
+#include <Arduino.h>
 
-const uint8_t leftIR = 12, rightIR = 13, int out1 = 22, out2 = 21, enA = 23, out3 = 19, out4 = 18, enB = 15;
+int out1 = 22, out2 = 21, enA = 23, out3 = 19, out4 = 18, enB = 15, lIR = 13, rIR = 12;
 
-class Vehicle {
-  private:
-    int _leftIR, _rightIR, _motorL1, _motorL2, _motorR1, _motorR2, _enA, _enB;
-    const int freq = 5000;
-    const int res = 8; 
-  public:
-    Vehicle(int leftIR, int rightIR, int motorL1, int motorR1, int motorL2, int motorR2, int enA, int enB) {
-      _leftIR = leftIR;
-      _rightIR = rightIR;
-      _motorL1 = motorL1;
-      _motorL2 = motorL2;
-      _motorR1 = motorR1;
-      _motorR2 = motorR2;
-      _enA = enA;
-      _enB = enB;
+int freq = 10000;
+int res = 8;
+
+int enAspeed, enBspeed;
+
+int linearPWM = 160;
+int turnPWM = 140;
+
+
+void moveForward(int speedM) {
+  enBspeed = speedM;
+  enAspeed = speedM;
+
+  ledcWrite(enA, enAspeed);
+  ledcWrite(enB, enBspeed);
+
+  digitalWrite(out1, HIGH); digitalWrite(out2, LOW);
+  digitalWrite(out3, HIGH); digitalWrite(out4, LOW);
+}
+void turnLeft(int speedM, String mode) {
+  enBspeed = speedM;
+  enAspeed = speedM;
+
+  ledcWrite(enA, enAspeed);
+  ledcWrite(enB, enBspeed);
+
+  if(mode == "LF"){
+    digitalWrite(out1, LOW); digitalWrite(out2, HIGH);
+    digitalWrite(out3, HIGH); digitalWrite(out4, LOW);
+  }else if(mode == "Manual"){
+    digitalWrite(out1, LOW); digitalWrite(out2, LOW);
+    digitalWrite(out3, HIGH); digitalWrite(out4, LOW);  
+  }
+}
+void turnRight(int speedM, String mode) {
+  enBspeed = speedM;
+  enAspeed = speedM;
   
-      pinMode(_leftIR, INPUT);
-      pinMode(_rightIR, INPUT);
-      pinMode(_motorL1, OUTPUT);
-      pinMode(_motorL2, OUTPUT);
-      pinMode(_motorR1, OUTPUT);
-      pinMode(_motorR2, OUTPUT);
-      pinMode(_enA, OUTPUT);
-      pinMode(_enB, OUTPUT);
-  
-      ledcAttach(_enA, freq, res);
-      ledcAttach(_enB, freq, res);
-      ledcWrite(_enA, 150);
-      ledcWrite(_enB, 150);
-    }
-  
-    void moveForward() {
-      digitalWrite(_motorL1, HIGH); digitalWrite(_motorL2, LOW);
-      digitalWrite(_motorR1, HIGH); digitalWrite(_motorR2, LOW);
-    }
-    void turnLeft() {
-      digitalWrite(_motorL1, LOW); digitalWrite(_motorL2, LOW);
-      digitalWrite(_motorR1, LOW); digitalWrite(_motorR2, HIGH);
-    }
-    void turnRight() {
-      digitalWrite(_motorL1, LOW); digitalWrite(_motorL2, HIGH);
-      digitalWrite(_motorR1, LOW); digitalWrite(_motorR2, LOW);
-    }
-    void stop() {
-      digitalWrite(_motorL1, LOW); digitalWrite(_motorL2, LOW);
-      digitalWrite(_motorR1, LOW); digitalWrite(_motorR2, LOW);
-    }
-    bool returnLSensorState() {
-      int sensorLeftState = digitalRead(_leftIR);
-      return sensorLeftState;
-    }
-    bool returnRSensorState() {
-      int sensorRightState = digitalRead(_rightIR);
-      return sensorRightState;
-    }
-};
+  ledcWrite(enA, enAspeed);
+  ledcWrite(enB, enBspeed);
 
-Vehicle LineFollower(leftIR, rightIR, out1, out2, out3, out4, enA, enB);
-
-void setup() {
-  Serial.begin(115200);
-  LineFollower.init()
+  if(mode == "LF"){
+    digitalWrite(out1, HIGH); digitalWrite(out2, LOW);
+    digitalWrite(out3, LOW); digitalWrite(out4, HIGH);
+  }else if(mode == "Manual"){
+    digitalWrite(out1, HIGH); digitalWrite(out2, LOW);
+    digitalWrite(out3, LOW); digitalWrite(out4, LOW);  
+  }
 }
 
-void loop() {
-  while (running) {
-    bool sLstate = LineFollower.returnLSensorState();
-    bool sRstate = LineFollower.returnRSensorState();
-    if (sLstate == LOW && sRstate == LOW) {
-      LineFollower.moveForward();
-    } else if (sLstate == LOW && sRstate == HIGH) {
-      LineFollower.turnRight();
-    } else if (sLstate == HIGH && sRstate == LOW) {
-      LineFollower.turnLeft();
-    } else if (sLstate == HIGH && sRstate == HIGH){
-      LineFollower.stop(); 
-      running = false;
+void moveBackward(int speedM) {
+  enBspeed = speedM;
+  enAspeed = speedM;
+
+  ledcWrite(enA, enAspeed);
+  ledcWrite(enB, enBspeed);
+
+  digitalWrite(out1, LOW); digitalWrite(out2, HIGH);
+  digitalWrite(out3, LOW); digitalWrite(out4, HIGH);
+}
+
+void stopMotors() {
+  ledcWrite(enA, 0);
+  ledcWrite(enB, 0);
+  
+  digitalWrite(out1, LOW); digitalWrite(out2, LOW);
+  digitalWrite(out3, LOW); digitalWrite(out4, LOW);
+}
+
+void setup(){
+  pinMode(lIR, INPUT);
+  pinMode(rIR, INPUT);
+  pinMode(out1, OUTPUT);
+  pinMode(out2, OUTPUT);
+  pinMode(out3, OUTPUT);
+  pinMode(out4, OUTPUT);
+
+  ledcAttach(enA, freq, res);
+  ledcAttach(enB, freq, res);
+
+  ledcWrite(enA, enAspeed);
+  ledcWrite(enB, enBspeed);
+  Serial.begin(115200);
+}
+
+/*
+ * Normally, 0, 0 is for both on white line
+ * 
+ */
+
+int lastTurn = 0;
+
+void loop(){
+  int sLread = digitalRead(lIR);
+  int sRread = digitalRead(rIR);
+
+  if(sLread == LOW && sRread == LOW){
+    moveForward(linearPWM);
+  }
+  else if(sLread == HIGH && sRread == LOW){
+    lastTurn = 1;
+    turnLeft(turnPWM, "LF");
+  }
+  else if(sLread == LOW && sRread == HIGH){
+    lastTurn = 2;
+    turnRight(turnPWM, "LF");
+  }
+  else if(sLread == HIGH && sRread == HIGH){
+    if(lastTurn == 1){
+      turnLeft(turnPWM, "LF");
+      delay(10);
+    }
+    else if(lastTurn == 2){
+      turnRight(turnPWM, "LF");
+      delay(10);
+    }
+    else{
+     moveBackward(linearPWM);  
     }
   }
 }
