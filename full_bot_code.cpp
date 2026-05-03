@@ -91,42 +91,44 @@ const char index_html[] PROGMEM = R"rawliteral(
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tata House Bot Control</title>
+    <title>Tata House GUI Robot Control</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
     <style>
-        :root {
+    	:root {
             --primary-bg: #9e2a0d;
-            --glass-bg: rgba(255, 255, 255, 0.1);
+       	    --glass-bg: rgba(255, 255, 255, 0.1);
             --accent: #ffffff;
             --danger: #ff4b2b;
             --btn-idle: rgba(0, 0, 0, 0.3);
-        }
+   	 }
 
-        body { 
+    	body { 
             font-family: 'Inter', sans-serif; 
-            text-align: center; 
             background-color: var(--primary-bg); 
             color: white;
             margin: 0;
-            padding: 20px;
+            padding: 0 40px; /* Padding on sides */
             display: flex;
-            flex-direction: column;
+            flex-direction: row; /* Aligns children horizontally */
             align-items: center;
-            justify-content: center;
-            min-height: 100vh;
+            justify-content: space-around; /* Distributes title and box */
+            height: 100vh; /* Exactly the height of the screen */
+            overflow: hidden; /* Prevents scrolling */
             user-select: none;
-        }
+    	}
 
-        h1 { 
+    	h1 { 
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 4px;
-            margin-bottom: 30px;
-            font-size: 1.8rem;
+            font-size: 5.5rem; 
             text-shadow: 0 4px 10px rgba(0,0,0,0.2);
-        }
+            max-width: 300px; 
+            text-align: left; 
+            margin: 0;
+    	}
 
-        .controls-container {
+    	.controls-container {
             background: var(--glass-bg);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
@@ -137,7 +139,8 @@ const char index_html[] PROGMEM = R"rawliteral(
             display: flex;
             flex-direction: column;
             align-items: center;
-        }
+            flex-shrink: 0; /* Prevents the box from squishing */
+    	}
 
         .grid-container { 
             display: grid; 
@@ -184,11 +187,11 @@ const char index_html[] PROGMEM = R"rawliteral(
         }
 
         .slider-label {
-            font-weight: 700;
-            font-size: 11px;
+            font-weight: 800;
+            font-size: 1rem;
             letter-spacing: 2px;
             margin-top: 15px;
-            margin-bottom: 8px;
+            margin-bottom: 2px;
             display: block;
         }
 
@@ -199,7 +202,8 @@ const char index_html[] PROGMEM = R"rawliteral(
             border-radius: 10px;
             background: rgba(255,255,255,0.2);
             outline: none;
-            margin-bottom: 5px;
+            margin-top: 25px;
+            margin-bottom: 10px;
         }
 
         .slider::-webkit-slider-thumb {
@@ -247,7 +251,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         </div>
 
         <div class="slider-section">
-            <span class="slider-label">SPEED: <span id="speedVal">160</span></span><br><br>
+            <span class="slider-label">SPEED: <span id="speedVal">160</span></span>
             <input type="range" min="0" max="255" value="160" class="slider" oninput="updateSpeed(this.value)">
         </div>
 
@@ -255,7 +259,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     </div>
 
     <script>
-        let modes = ["MANUAL", "LINE FOLLOWER", "OBSTACLE DETECTION"];
+        let modes = ["Manual", "Line Follower", "Obstacle Detection"];
         let currentModeIndex = 0;
         let activeKey = null;
 
@@ -301,6 +305,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     </script>
 </body>
 </html>
+
 )rawliteral";
 
 
