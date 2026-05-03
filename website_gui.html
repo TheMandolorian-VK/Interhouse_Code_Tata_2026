@@ -96,11 +96,11 @@
         }
 
         .slider-label {
-            font-weight: 700;
+            font-weight: 800;
             font-size: 11px;
             letter-spacing: 2px;
             margin-top: 15px;
-            margin-bottom: 8px;
+            margin-bottom: 2px;
             display: block;
         }
 
@@ -111,7 +111,8 @@
             border-radius: 10px;
             background: rgba(255,255,255,0.2);
             outline: none;
-            margin-bottom: 5px;
+            margin-top: 25px;
+            margin-bottom: 10px;
         }
 
         .slider::-webkit-slider-thumb {
@@ -159,7 +160,7 @@
         </div>
 
         <div class="slider-section">
-            <span class="slider-label">SPEED: <span id="speedVal">160</span></span><br><br>
+            <span class="slider-label">SPEED: <span id="speedVal">160</span></span>
             <input type="range" min="0" max="255" value="160" class="slider" oninput="updateSpeed(this.value)">
         </div>
 
