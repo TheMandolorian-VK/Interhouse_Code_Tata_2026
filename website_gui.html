@@ -159,11 +159,8 @@
         </div>
 
         <div class="slider-section">
-            <span class="slider-label">POWER (LEFT): <span id="speedValLeft">150</span></span>
-            <input type="range" min="0" max="255" value="150" class="slider" id="pwmSliderLeft" oninput="updateSpeedLeft(this.value)">
-            
-            <span class="slider-label">POWER (RIGHT): <span id="speedValRight">150</span></span>
-            <input type="range" min="0" max="255" value="150" class="slider" id="pwmSliderRight" oninput="updateSpeedRight(this.value)">
+            <span class="slider-label">SPEED: <span id="speedVal">160</span></span><br><br>
+            <input type="range" min="0" max="255" value="160" class="slider" oninput="updateSpeed(this.value)">
         </div>
 
         <button class="mode-btn" id="modeBtn" onclick="toggleMode()">MODE: MANUAL</button>
@@ -186,14 +183,9 @@
             fetch('/control?cmd=' + command).catch(() => {});
         }
 
-        function updateSpeedLeft(val) {
-            document.getElementById('speedValLeft').innerText = val;
-            fetch('/speed?side=L&val=' + val).catch(() => {});
-        }
-
-        function updateSpeedRight(val) {
-            document.getElementById('speedValRight').innerText = val;
-            fetch('/speed?side=R&val=' + val).catch(() => {});
+        function updateSpeed(v) { 
+            document.getElementById('speedVal').innerText = v; 
+            fetch('/speed?val=' + v).catch(()=>{}); 
         }
 
         function toggleMode() {
