@@ -10,7 +10,6 @@ const char* password = "trueassteel";
 
 // Global Variables to store GUI states
 String currentCommand = "stop";
-String lastCommand = "stop";
 int linearPWM = 160;
 int turnPWM = 140;
 int enAspeed, enBspeed;
@@ -122,7 +121,7 @@ const char index_html[] PROGMEM = R"rawliteral(
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 4px;
-            font-size: 5.5rem; 
+            font-size: 2.5rem; 
             text-shadow: 0 4px 10px rgba(0,0,0,0.2);
             max-width: 300px; 
             text-align: left; 
@@ -306,7 +305,6 @@ const char index_html[] PROGMEM = R"rawliteral(
     </script>
 </body>
 </html>
-
 )rawliteral";
 
 
@@ -352,34 +350,31 @@ void setup() {
   server.on("/mode", HTTP_GET, [](AsyncWebServerRequest *request){
     if (request->hasParam("val")) {
       currentMode = request->getParam("val")->value().toInt();
-      lastCommand = "mode_change_reset"; // Force Manual mode to refresh state
-      stopMotors(); 
+      stopMotors(); // Safety reset on mode change
     }
     request->send(200, "text/plain", "OK");
   });
+
   server.begin();
 }
 
 void loop() {
   // Use a switch case or if statements to separate your logic
   if (currentMode == 0) {
-    if(lastCommand != currentCommand){
-      if (currentCommand == "forward") {
-        moveForward(linearPWM);
-      } 
-      else if (currentCommand == "backward") {
-        moveBackward(linearPWM);
-      }
-      else if (currentCommand == "left"){
-        turnLeft(turnPWM, "Manual");  
-      }
-      else if (currentCommand == "right"){
-        turnRight(turnPWM, "Manual");  
-      }
-      else if(currentCommand == "stop"){
-        stopMotors();
-      }
-      lastCommand = currentCommand;
+    if (currentCommand == "forward") {
+      moveForward(linearPWM);
+    } 
+    else if (currentCommand == "backward") {
+      moveBackward(linearPWM);
+    }
+    else if (currentCommand == "left"){
+      turnLeft(turnPWM, "Manual");  
+    }
+    else if (currentCommand == "right"){
+      turnRight(turnPWM, "Manual");  
+    }
+    else if(currentCommand == "stop"){
+      stopMotors();
     }
   } 
   else if (currentMode == 1) {
