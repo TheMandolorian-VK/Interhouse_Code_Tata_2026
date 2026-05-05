@@ -2,87 +2,25 @@
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
 
-int out1 = 22, out2 = 21, enA = 23, out3 = 19, out4 = 18, enB = 15, lIR = 13, rIR = 12;
+int out1 = 22, out2 = 21, enA = 23, out3 = 19, out4 = 18, enB = 15, lIR = 34, rIR = 35, rTrig, rEcho, fTrig, fEcho, lTrig, lEcho;
 
-// Replace with your network credentials
+int freq = 10000;
+int res = 8;
+
+int enAspeed, enBspeed;
+int linearPWM = 180; 
+int turnPWM = 170;
+
 const char* ssid = "Tata_House";
 const char* password = "trueassteel";
 
 // Global Variables to store GUI states
 String currentCommand = "stop";
-int linearPWM = 160;
-int turnPWM = 140;
-int enAspeed, enBspeed;
-
 int currentMode = 0; // 0=Manual, 1=Line Follower, 2=Obstacle
-int freq = 10000;
-int res = 8;
 
 AsyncWebServer server(80);
 
 int lastTurn = 0; 
-
-void moveForward(int speedM) {
-  enBspeed = speedM;
-  enAspeed = speedM;
-
-  ledcWrite(enA, enAspeed);
-  ledcWrite(enB, enBspeed);
-
-  digitalWrite(out1, HIGH); digitalWrite(out2, LOW);
-  digitalWrite(out3, HIGH); digitalWrite(out4, LOW);
-}
-void turnLeft(int speedM, String mode) {
-  enBspeed = speedM;
-  enAspeed = speedM;
-
-  ledcWrite(enA, enAspeed);
-  ledcWrite(enB, enBspeed);
-
-  if(mode == "LF"){
-    digitalWrite(out1, LOW); digitalWrite(out2, HIGH);
-    digitalWrite(out3, HIGH); digitalWrite(out4, LOW);
-  }else if(mode == "Manual"){
-    digitalWrite(out1, LOW); digitalWrite(out2, LOW);
-    digitalWrite(out3, HIGH); digitalWrite(out4, LOW);  
-  }
-}
-void turnRight(int speedM, String mode) {
-  enBspeed = speedM;
-  enAspeed = speedM;
-  
-  ledcWrite(enA, enAspeed);
-  ledcWrite(enB, enBspeed);
-
-  if(mode == "LF"){
-    digitalWrite(out1, HIGH); digitalWrite(out2, LOW);
-    digitalWrite(out3, LOW); digitalWrite(out4, HIGH);
-  }else if(mode == "Manual"){
-    digitalWrite(out1, HIGH); digitalWrite(out2, LOW);
-    digitalWrite(out3, LOW); digitalWrite(out4, LOW);  
-  }
-}
-
-void moveBackward(int speedM) {
-  enBspeed = speedM;
-  enAspeed = speedM;
-
-  ledcWrite(enA, enAspeed);
-  ledcWrite(enB, enBspeed);
-
-  digitalWrite(out1, LOW); digitalWrite(out2, HIGH);
-  digitalWrite(out3, LOW); digitalWrite(out4, HIGH);
-}
-
-void stopMotors() {
-  ledcWrite(enA, 0);
-  ledcWrite(enB, 0);
-  
-  digitalWrite(out1, LOW); digitalWrite(out2, LOW);
-  digitalWrite(out3, LOW); digitalWrite(out4, LOW);
-}
-
-
 
 // Paste your full HTML code inside this R"rawliteral(...)rawliteral" block
 const char index_html[] PROGMEM = R"rawliteral(
@@ -258,55 +196,147 @@ const char index_html[] PROGMEM = R"rawliteral(
         <button class="mode-btn" id="modeBtn" onclick="toggleMode()">MODE: MANUAL</button>
     </div>
 
-    <script>
-        let modes = ["Manual", "Line Follower", "Obstacle Detection"];
-        let currentModeIndex = 0;
-        let activeKey = null;
+<script>
+    let modes = ["Manual", "Line Follower", "Obstacle Detection"];
+    let currentModeIndex = 0;
+    let activeKey = null;
 
-        const keyMap = {
-            "ArrowUp": { cmd: "forward", id: "btn-forward" },
-            "ArrowDown": { cmd: "backward", id: "btn-backward" },
-            "ArrowLeft": { cmd: "left", id: "btn-left" },
-            "ArrowRight": { cmd: "right", id: "btn-right" },
-            " ": { cmd: "stop", id: "btn-stop" }
-        };
+    const keyMap = {
+        "ArrowUp": { cmd: "forward", id: "btn-forward" },
+        "ArrowDown": { cmd: "backward", id: "btn-backward" },
+        "ArrowLeft": { cmd: "left", id: "btn-left" },
+        "ArrowRight": { cmd: "right", id: "btn-right" },
+        " ": { cmd: "stop", id: "btn-stop" }
+    };
 
-        function sendCmd(command) {
-            fetch('/control?cmd=' + command).catch(() => {});
-        }
+    function sendCmd(command) {
+    // This line will show up in your console even if the fetch fails
+        console.log("LOG: Sending command -> " + command); 
+        fetch('/control?cmd=' + command).catch(() => {});
+    }
 
-        function updateSpeed(v) { 
-            document.getElementById('speedVal').innerText = v; 
-            fetch('/speed?val=' + v).catch(()=>{}); 
-        }
+    function updateSpeed(v) { 
+    // This line will show up in your console when you move the slider
+        console.log("LOG: Speed updated to -> " + v);
+        document.getElementById('speedVal').innerText = v; 
+        fetch('/speed?val=' + v).catch(()=>{}); 
+    }
 
-        function toggleMode() {
-            currentModeIndex = (currentModeIndex + 1) % modes.length;
-            document.getElementById('modeBtn').innerText = "MODE: " + modes[currentModeIndex];
-            fetch('/mode?val=' + currentModeIndex).catch(() => {});
-        }
+    function toggleMode() {
+        currentModeIndex = (currentModeIndex + 1) % modes.length;
+        document.getElementById('modeBtn').innerText = "MODE: " + modes[currentModeIndex];
+	console.log(currentModeIndex);
+        fetch('/mode?val=' + currentModeIndex).catch(() => {});
+    }
 
-        window.addEventListener("keydown", (e) => {
-            if (keyMap[e.key] && activeKey !== e.key) {
-                e.preventDefault();
+    // Use 'window' level listeners for better coverage
+    window.addEventListener("keydown", (e) => {
+        if (keyMap[e.key]) {
+            e.preventDefault(); // Stop scrolling
+            if (activeKey !== e.key) {
                 activeKey = e.key;
-                document.getElementById(keyMap[e.key].id).classList.add("active-key");
+                console.log("Key Down: " + e.key);
+                const btn = document.getElementById(keyMap[e.key].id);
+                if(btn) btn.classList.add("active-key");
                 sendCmd(keyMap[e.key].cmd);
             }
-        });
+        }
+    });
 
-        window.addEventListener("keyup", (e) => {
-            if (keyMap[e.key] && activeKey === e.key) {
-                activeKey = null;
-                document.getElementById(keyMap[e.key].id).classList.remove("active-key");
+    window.addEventListener("keyup", (e) => {
+        if (keyMap[e.key]) {
+            console.log("Key Up: " + e.key);
+            activeKey = null;
+            const btn = document.getElementById(keyMap[e.key].id);
+            if(btn) btn.classList.remove("active-key");
+            
+            // Only send stop if we weren't pressing the stop button itself
+            if (e.key !== " ") {
                 sendCmd("stop");
             }
-        });
-    </script>
+        }
+    });
+</script>
 </body>
 </html>
 )rawliteral";
 
+void moveForward(int speedM) {
+  enBspeed = speedM;
+  enAspeed = speedM;
+
+  ledcWrite(enA, enAspeed);
+  ledcWrite(enB, enBspeed);
+
+  digitalWrite(out1, HIGH); digitalWrite(out2, LOW);
+  digitalWrite(out3, HIGH); digitalWrite(out4, LOW);
+}
+void turnLeft(int speedM, String mode) {
+  enBspeed = speedM;
+  enAspeed = 0.9 * speedM;
+
+  ledcWrite(enA, enAspeed);
+  ledcWrite(enB, enBspeed);
+
+  if(mode == "LF"){
+    digitalWrite(out1, LOW); digitalWrite(out2, HIGH);
+    digitalWrite(out3, HIGH); digitalWrite(out4, LOW);
+    delay(25);
+  }else if(mode == "Manual"){
+    digitalWrite(out1, LOW); digitalWrite(out2, LOW);
+    digitalWrite(out3, HIGH); digitalWrite(out4, LOW);  
+  }
+}
+void turnRight(int speedM, String mode) {
+  enBspeed = 0.9 * speedM;
+  enAspeed = speedM;
+  
+  ledcWrite(enA, enAspeed);
+  ledcWrite(enB, enBspeed);
+
+  if(mode == "LF"){
+    digitalWrite(out1, HIGH); digitalWrite(out2, LOW);
+    digitalWrite(out3, LOW); digitalWrite(out4, HIGH);
+    delay(25);
+  }else if(mode == "Manual"){
+    digitalWrite(out1, HIGH); digitalWrite(out2, LOW);
+    digitalWrite(out3, LOW); digitalWrite(out4, LOW);  
+  }
+}
+
+void moveBackward(int speedM) {
+  enBspeed = 0.9 * speedM;
+  enAspeed = speedM;
+
+  ledcWrite(enA, enAspeed);
+  ledcWrite(enB, enBspeed);
+
+  digitalWrite(out1, LOW); digitalWrite(out2, HIGH);
+  digitalWrite(out3, LOW); digitalWrite(out4, HIGH);
+}
+
+void stopMotors() {
+  ledcWrite(enA, 0);
+  ledcWrite(enB, 0);
+  
+  digitalWrite(out1, LOW); digitalWrite(out2, LOW);
+  digitalWrite(out3, LOW); digitalWrite(out4, LOW);
+}
+
+auto calculateDistance(trig, echo){
+  digitalWrite(trig, LOW);
+  delayMicroseconds(5);
+
+  digitalWrite(trig, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trig, LOW);
+
+  long duration = pulseIn(echo, HIGH);
+  float distance = (duration * 0.034) / 2
+
+  return distance;
+
+}
 
 void setup() {
   pinMode(lIR, INPUT);
@@ -315,6 +345,12 @@ void setup() {
   pinMode(out2, OUTPUT);
   pinMode(out3, OUTPUT);
   pinMode(out4, OUTPUT);
+  // pinMode(lTrig, OUTPUT);
+  // pinMode(lEcho, INPUT);
+  // pinMode(fTrig, OUTPUT);
+  // pinMode(fEcho, INPUT);
+  // pinMode(rTrig, OUTPUT);
+  // pinMode(rEcho, INPUT);
 
   ledcAttach(enA, freq, res);
   ledcAttach(enB, freq, res);
@@ -409,5 +445,18 @@ void loop() {
   else if (currentMode == 2) {
     // please do replace this with ultrasonic code
     stopMotors();
+ /* long lDistance = calculateDistance(lTrig, lEcho), fDistance = calculateDistance(fTrig, fEcho), rDistance = calculateDistance(rTrig, rEcho);
+    if(lDistance > ??){
+      turnRight(150, "Manual")
+    } 
+    if(fDistance > ??){
+      moveBackward(150)
+    }else{
+      moveForward(120);
+    }
+    if(rDistance > ??){
+      turnLeft(150, "Manual")
+    }
+    */
   }
 }
