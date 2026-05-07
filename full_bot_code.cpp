@@ -1,265 +1,33 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
+#include <ArduinoJson.h>
+#include "index.h"
 
-int out1 = 22, out2 = 21, enA = 23, out3 = 19, out4 = 18, enB = 15, lIR = 34, rIR = 35, rTrig, rEcho, fTrig, fEcho, lTrig, lEcho;
+// ── WiFi Credentials ──────────────────────────────────────────────
+const char* ssid     = "Tata_House";
+const char* password = "trueassteel";
+
+// ── Server & WebSocket ────────────────────────────────────────────
+AsyncWebServer server(80);
+AsyncWebSocket ws("/ws");
+
+// ── Bot State Variables ───────────────────────────────────────────
+String botCommand = "stop";   // "forward" | "backward" | "left" | "right" | "stop"
+int    botPWM     = 128;      // 0–255
+String botMode    = "Manual"; // "Manual" | "Line Following" | "Obstacle Detection"
+
+int out1 = 22, out2 = 21, enA = 23, out3 = 19, out4 = 18, enB = 15, lIR = 13, rIR = 12;
 
 int freq = 10000;
 int res = 8;
 
 int enAspeed, enBspeed;
-int linearPWM = 180; 
-int turnPWM = 170;
 
-const char* ssid = "Tata_House";
-const char* password = "trueassteel";
-
-// Global Variables to store GUI states
-String currentCommand = "stop";
-int currentMode = 0; // 0=Manual, 1=Line Follower, 2=Obstacle
-
-AsyncWebServer server(80);
-
-int lastTurn = 0; 
-
-// Paste your full HTML code inside this R"rawliteral(...)rawliteral" block
-const char index_html[] PROGMEM = R"rawliteral(
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tata House GUI Robot Control</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
-    <style>
-    	:root {
-            --primary-bg: #9e2a0d;
-       	    --glass-bg: rgba(255, 255, 255, 0.1);
-            --accent: #ffffff;
-            --danger: #ff4b2b;
-            --btn-idle: rgba(0, 0, 0, 0.3);
-   	 }
-
-    	body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: var(--primary-bg); 
-            color: white;
-            margin: 0;
-            padding: 0 40px; /* Padding on sides */
-            display: flex;
-            flex-direction: row; /* Aligns children horizontally */
-            align-items: center;
-            justify-content: space-around; /* Distributes title and box */
-            height: 100vh; /* Exactly the height of the screen */
-            overflow: hidden; /* Prevents scrolling */
-            user-select: none;
-    	}
-
-    	h1 { 
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 4px;
-            font-size: 2.5rem; 
-            text-shadow: 0 4px 10px rgba(0,0,0,0.2);
-            max-width: 300px; 
-            text-align: left; 
-            margin: 0;
-    	}
-
-    	.controls-container {
-            background: var(--glass-bg);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            padding: 40px;
-            border-radius: 40px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            flex-shrink: 0; /* Prevents the box from squishing */
-    	}
-
-        .grid-container { 
-            display: grid; 
-            grid-template-columns: repeat(3, 80px); 
-            grid-template-rows: repeat(3, 80px);
-            gap: 15px; 
-            margin-bottom: 30px;
-        }
-
-        button { 
-            width: 80px;
-            height: 80px;
-            font-size: 22px; 
-            border-radius: 50%; 
-            border: none; 
-            cursor: pointer; 
-            background: var(--btn-idle); 
-            color: white; 
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            outline: none;
-        }
-
-        button:hover { background: rgba(255,255,255,0.2); }
-        
-        button:active, .active-key { 
-            background: white !important; 
-            color: var(--primary-bg) !important;
-            transform: scale(0.92);
-            box-shadow: 0 0 20px rgba(255,255,255,0.4);
-        }
-
-        .stop { 
-            background: var(--danger);
-            font-size: 28px;
-        }
-
-        .slider-section {
-            margin: 10px 0;
-            width: 100%;
-            max-width: 270px;
-        }
-
-        .slider-label {
-            font-weight: 800;
-            font-size: 1rem;
-            letter-spacing: 2px;
-            margin-top: 15px;
-            margin-bottom: 2px;
-            display: block;
-        }
-
-        .slider { 
-            -webkit-appearance: none;
-            width: 100%; 
-            height: 8px;
-            border-radius: 10px;
-            background: rgba(255,255,255,0.2);
-            outline: none;
-            margin-top: 25px;
-            margin-bottom: 10px;
-        }
-
-        .slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 22px;
-            height: 22px;
-            border-radius: 50%;
-            background: white;
-            cursor: pointer;
-        }
-
-        .mode-btn { 
-            width: 100%;
-            max-width: 270px;
-            border-radius: 50px; 
-            padding: 18px; 
-            background: transparent; 
-            font-weight: 800;
-            font-size: 14px;
-            border: 2px solid white;
-            color: white;
-            letter-spacing: 1.5px;
-            margin-top: 25px;
-            cursor: pointer;
-        }
-    </style>
-</head>
-<body>
-
-    <h1>Tata House: Interhouse Bot GUI</h1>
-
-    <div class="controls-container">
-        <div class="grid-container">
-            <div></div>
-            <button id="btn-forward" onmousedown="sendCmd('forward')" onmouseup="sendCmd('stop')" ontouchstart="sendCmd('forward')" ontouchend="sendCmd('stop')">▲</button>
-            <div></div>
-            
-            <button id="btn-left" onmousedown="sendCmd('left')" onmouseup="sendCmd('stop')" ontouchstart="sendCmd('left')" ontouchend="sendCmd('stop')">◀</button>
-            <button id="btn-stop" class="stop" onclick="sendCmd('stop')">■</button>
-            <button id="btn-right" onmousedown="sendCmd('right')" onmouseup="sendCmd('stop')" ontouchstart="sendCmd('right')" ontouchend="sendCmd('stop')">▶</button>
-            
-            <div></div>
-            <button id="btn-backward" onmousedown="sendCmd('backward')" onmouseup="sendCmd('stop')" ontouchstart="sendCmd('backward')" ontouchend="sendCmd('stop')">▼</button>
-            <div></div>
-        </div>
-
-        <div class="slider-section">
-            <span class="slider-label">SPEED: <span id="speedVal">160</span></span>
-            <input type="range" min="0" max="255" value="160" class="slider" oninput="updateSpeed(this.value)">
-        </div>
-
-        <button class="mode-btn" id="modeBtn" onclick="toggleMode()">MODE: MANUAL</button>
-    </div>
-
-<script>
-    let modes = ["Manual", "Line Follower", "Obstacle Detection"];
-    let currentModeIndex = 0;
-    let activeKey = null;
-
-    const keyMap = {
-        "ArrowUp": { cmd: "forward", id: "btn-forward" },
-        "ArrowDown": { cmd: "backward", id: "btn-backward" },
-        "ArrowLeft": { cmd: "left", id: "btn-left" },
-        "ArrowRight": { cmd: "right", id: "btn-right" },
-        " ": { cmd: "stop", id: "btn-stop" }
-    };
-
-    function sendCmd(command) {
-    // This line will show up in your console even if the fetch fails
-        console.log("LOG: Sending command -> " + command); 
-        fetch('/control?cmd=' + command).catch(() => {});
-    }
-
-    function updateSpeed(v) { 
-    // This line will show up in your console when you move the slider
-        console.log("LOG: Speed updated to -> " + v);
-        document.getElementById('speedVal').innerText = v; 
-        fetch('/speed?val=' + v).catch(()=>{}); 
-    }
-
-    function toggleMode() {
-        currentModeIndex = (currentModeIndex + 1) % modes.length;
-        document.getElementById('modeBtn').innerText = "MODE: " + modes[currentModeIndex];
-	console.log(currentModeIndex);
-        fetch('/mode?val=' + currentModeIndex).catch(() => {});
-    }
-
-    // Use 'window' level listeners for better coverage
-    window.addEventListener("keydown", (e) => {
-        if (keyMap[e.key]) {
-            e.preventDefault(); // Stop scrolling
-            if (activeKey !== e.key) {
-                activeKey = e.key;
-                console.log("Key Down: " + e.key);
-                const btn = document.getElementById(keyMap[e.key].id);
-                if(btn) btn.classList.add("active-key");
-                sendCmd(keyMap[e.key].cmd);
-            }
-        }
-    });
-
-    window.addEventListener("keyup", (e) => {
-        if (keyMap[e.key]) {
-            console.log("Key Up: " + e.key);
-            activeKey = null;
-            const btn = document.getElementById(keyMap[e.key].id);
-            if(btn) btn.classList.remove("active-key");
-            
-            // Only send stop if we weren't pressing the stop button itself
-            if (e.key !== " ") {
-                sendCmd("stop");
-            }
-        }
-    });
-</script>
-</body>
-</html>
-)rawliteral";
+int linearPWM = 160;
+int turnPWM = 140;
+int lastTurn = 0;
 
 void moveForward(int speedM) {
   enBspeed = speedM;
@@ -273,7 +41,7 @@ void moveForward(int speedM) {
 }
 void turnLeft(int speedM, String mode) {
   enBspeed = speedM;
-  enAspeed = 0.9 * speedM;
+  enAspeed = speedM;
 
   ledcWrite(enA, enAspeed);
   ledcWrite(enB, enBspeed);
@@ -281,14 +49,13 @@ void turnLeft(int speedM, String mode) {
   if(mode == "LF"){
     digitalWrite(out1, LOW); digitalWrite(out2, HIGH);
     digitalWrite(out3, HIGH); digitalWrite(out4, LOW);
-    delay(25);
   }else if(mode == "Manual"){
     digitalWrite(out1, LOW); digitalWrite(out2, LOW);
     digitalWrite(out3, HIGH); digitalWrite(out4, LOW);  
   }
 }
 void turnRight(int speedM, String mode) {
-  enBspeed = 0.9 * speedM;
+  enBspeed = speedM;
   enAspeed = speedM;
   
   ledcWrite(enA, enAspeed);
@@ -297,7 +64,6 @@ void turnRight(int speedM, String mode) {
   if(mode == "LF"){
     digitalWrite(out1, HIGH); digitalWrite(out2, LOW);
     digitalWrite(out3, LOW); digitalWrite(out4, HIGH);
-    delay(25);
   }else if(mode == "Manual"){
     digitalWrite(out1, HIGH); digitalWrite(out2, LOW);
     digitalWrite(out3, LOW); digitalWrite(out4, LOW);  
@@ -305,7 +71,7 @@ void turnRight(int speedM, String mode) {
 }
 
 void moveBackward(int speedM) {
-  enBspeed = 0.9 * speedM;
+  enBspeed = speedM;
   enAspeed = speedM;
 
   ledcWrite(enA, enAspeed);
@@ -323,140 +89,188 @@ void stopMotors() {
   digitalWrite(out3, LOW); digitalWrite(out4, LOW);
 }
 
-auto calculateDistance(trig, echo){
-  digitalWrite(trig, LOW);
-  delayMicroseconds(5);
 
-  digitalWrite(trig, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trig, LOW);
+// ── WebSocket Event Handler ───────────────────────────────────────
+void onWsEvent(AsyncWebSocket*       server,
+               AsyncWebSocketClient* client,
+               AwsEventType          type,
+               void*                 arg,
+               uint8_t*              data,
+               size_t                len)
+{
+  switch (type) {
 
-  long duration = pulseIn(echo, HIGH);
-  float distance = (duration * 0.034) / 2
+    case WS_EVT_CONNECT:
+      Serial.printf("[WS] Client #%u connected from %s\n",
+                    client->id(),
+                    client->remoteIP().toString().c_str());
+      break;
 
-  return distance;
+    case WS_EVT_DISCONNECT:
+      Serial.printf("[WS] Client #%u disconnected\n", client->id());
+      break;
 
+    case WS_EVT_DATA: {
+      AwsFrameInfo* info = (AwsFrameInfo*)arg;
+
+      // Only handle complete, text frames
+      if (info->final && info->index == 0 &&
+          info->len == len && info->opcode == WS_TEXT)
+      {
+        // Null-terminate the buffer
+        char buf[len + 1];
+        memcpy(buf, data, len);
+        buf[len] = '\0';
+
+        Serial.printf("[WS] Received: %s\n", buf);
+
+        // ── Parse JSON ──
+        StaticJsonDocument<256> doc;
+        DeserializationError err = deserializeJson(doc, buf);
+
+        if (!err) {
+          // Update mode
+          if (doc.containsKey("mode")) {
+            botMode = doc["mode"].as<String>();
+            Serial.printf("  Mode    → %s\n", botMode.c_str());
+          }
+
+          // Update PWM
+          if (doc.containsKey("pwm")) {
+            botPWM = doc["pwm"].as<int>();
+            botPWM = constrain(botPWM, 0, 255);
+            Serial.printf("  PWM     → %d\n", botPWM);
+          }
+
+          // Update command (only meaningful in Manual mode)
+          if (doc.containsKey("cmd")) {
+            botCommand = doc["cmd"].as<String>();
+            Serial.printf("  Command → %s\n", botCommand.c_str());
+          }
+
+          // ── Acknowledge back to client ──
+          StaticJsonDocument<128> ack;
+          ack["status"] = "ok";
+          ack["mode"]   = botMode;
+          ack["pwm"]    = botPWM;
+          ack["cmd"]    = botCommand;
+
+          String ackStr;
+          serializeJson(ack, ackStr);
+          client->text(ackStr);
+
+        } else {
+          Serial.printf("  JSON parse error: %s\n", err.c_str());
+        }
+      }
+      break;
+    }
+
+    case WS_EVT_ERROR:
+      Serial.printf("[WS] Error from client #%u\n", client->id());
+      break;
+
+    default:
+      break;
+  }
 }
 
+// ── Setup ─────────────────────────────────────────────────────────
 void setup() {
+  Serial.begin(115200);
   pinMode(lIR, INPUT);
   pinMode(rIR, INPUT);
   pinMode(out1, OUTPUT);
   pinMode(out2, OUTPUT);
   pinMode(out3, OUTPUT);
   pinMode(out4, OUTPUT);
-  // pinMode(lTrig, OUTPUT);
-  // pinMode(lEcho, INPUT);
-  // pinMode(fTrig, OUTPUT);
-  // pinMode(fEcho, INPUT);
-  // pinMode(rTrig, OUTPUT);
-  // pinMode(rEcho, INPUT);
 
   ledcAttach(enA, freq, res);
   ledcAttach(enB, freq, res);
 
-  ledcWrite(enA, linearPWM);
-  ledcWrite(enB, linearPWM);
-  Serial.begin(115200);
+  ledcWrite(enA, enAspeed);
+  ledcWrite(enB, enBspeed);
+  Serial.println("\n\n=== Bot WebSocket Controller ===");
 
+  // Connect to WiFi
+  WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
+  Serial.print("Connecting to WiFi");
+
   while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.println("Connecting...");
+    delay(500);
+    Serial.print(".");
   }
+
+  Serial.println("\nConnected!");
+  Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
 
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+  // Register WebSocket handler
+  ws.onEvent(onWsEvent);
+  server.addHandler(&ws);
+
+  // Serve the main HTML page
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) {
     request->send_P(200, "text/html", index_html);
   });
 
-  server.on("/control", HTTP_GET, [](AsyncWebServerRequest *request){
-    if (request->hasParam("cmd")) currentCommand = request->getParam("cmd")->value();
-    request->send(200, "text/plain", "OK");
-  });
-
-  server.on("/speed", HTTP_GET, [](AsyncWebServerRequest *r){
-    if(r->hasParam("val")) {
-      linearPWM = r->getParam("val")->value().toInt();
-      turnPWM = constrain(linearPWM - 30, 0, 255);
-    }
-    r->send(200);
-  });
-  
-  server.on("/mode", HTTP_GET, [](AsyncWebServerRequest *request){
-    if (request->hasParam("val")) {
-      currentMode = request->getParam("val")->value().toInt();
-      stopMotors(); // Safety reset on mode change
-    }
-    request->send(200, "text/plain", "OK");
+  // 404 handler
+  server.onNotFound([](AsyncWebServerRequest* request) {
+    request->send(404, "text/plain", "Not found");
   });
 
   server.begin();
+  Serial.println("HTTP server started.");
+  Serial.println("Open browser at: http://" + WiFi.localIP().toString());
 }
 
-void loop() {
-  // Use a switch case or if statements to separate your logic
-  if (currentMode == 0) {
-    if (currentCommand == "forward") {
-      moveForward(linearPWM);
-    } 
-    else if (currentCommand == "backward") {
-      moveBackward(linearPWM);
-    }
-    else if (currentCommand == "left"){
-      turnLeft(turnPWM, "Manual");  
-    }
-    else if (currentCommand == "right"){
-      turnRight(turnPWM, "Manual");  
-    }
-    else if(currentCommand == "stop"){
-      stopMotors();
-    }
-  } 
-  else if (currentMode == 1) {
-    int sLread = digitalRead(lIR);
-    int sRread = digitalRead(rIR);
+void applyManualControl(){
+	Serial.println("Manual");
+}
 
-    if(sLread == LOW && sRread == LOW){
-      moveForward(linearPWM);
-    }
-    else if(sLread == HIGH && sRread == LOW){
-      lastTurn = 1;
-      turnLeft(turnPWM, "LF");
-    }
-    else if(sLread == LOW && sRread == HIGH){
-      lastTurn = 2;
-      turnRight(turnPWM, "LF");
-    }
-    else if(sLread == HIGH && sRread == HIGH){
-      if(lastTurn == 1){
-        turnLeft(turnPWM, "LF");
-        delay(10);
-      }
-      else if(lastTurn == 2){
-        turnRight(turnPWM, "LF");
-        delay(10);
-      }
-      else{
-       moveForward(linearPWM);  
-      }
-    }
-  } 
-  else if (currentMode == 2) {
-    // please do replace this with ultrasonic code
-    stopMotors();
- /* long lDistance = calculateDistance(lTrig, lEcho), fDistance = calculateDistance(fTrig, fEcho), rDistance = calculateDistance(rTrig, rEcho);
-    if(lDistance > ??){
-      turnRight(150, "Manual")
-    } 
-    if(fDistance > ??){
-      moveBackward(150)
-    }else{
-      moveForward(120);
-    }
-    if(rDistance > ??){
-      turnLeft(150, "Manual")
-    }
-    */
+void runObstacleDetection(){
+	Serial.println("OD");
+}
+
+// ── Loop ──────────────────────────────────────────────────────────
+void loop() {
+  // Clean up disconnected WebSocket clients periodically
+  ws.cleanupClients();
+
+  if (botMode == "Manual") {
+    applyManualControl();
+  }else if (botMode == "Line Following") {
+      int sLread = digitalRead(lIR);
+	  int sRread = digitalRead(rIR);
+	
+	  if(sLread == LOW && sRread == LOW){
+	    moveForward(linearPWM);
+	  }
+	  else if(sLread == HIGH && sRread == LOW){
+	    lastTurn = 1;
+	    turnLeft(turnPWM, "LF");
+	  }
+	  else if(sLread == LOW && sRread == HIGH){
+	    lastTurn = 2;
+	    turnRight(turnPWM, "LF");
+	  }
+	  else if(sLread == HIGH && sRread == HIGH){
+	    if(lastTurn == 1){
+	      turnLeft(turnPWM, "LF");
+	      delay(10);
+	    }
+	    else if(lastTurn == 2){
+	      turnRight(turnPWM, "LF");
+	      delay(10);
+	    }
+	    else{
+	     moveBackward(linearPWM);  
+	    }
+	  }
+  }else if (botMode == "Obstacle Detection") {
+    runObstacleDetection();
   }
+
+  delay(10);
 }
