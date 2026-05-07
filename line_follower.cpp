@@ -4,12 +4,9 @@ int out1 = 22, out2 = 21, enA = 23, out3 = 19, out4 = 18, enB = 15, lIR = 13, rI
 
 int freq = 10000;
 int res = 8;
-
-int enAspeed, enBspeed;
-
 int linearPWM = 160;
 int turnPWM = 140;
-
+int enAspeed, enBspeed;
 
 void moveForward(int speedM) {
   enBspeed = speedM;
