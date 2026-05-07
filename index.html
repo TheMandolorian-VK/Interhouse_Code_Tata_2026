@@ -1,8 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<html lang="en"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tata House Robot GUI</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -221,7 +219,7 @@
 </head>
 <body>
 
-  <h1>&#x1F916; Tata House Interhouse Bot GUI</h1>
+  <h1>🤖 Tata House Interhouse Bot GUI</h1>
 
   <!-- Connection Status -->
   <div class="status-bar">
@@ -233,8 +231,8 @@
   <div class="card">
     <h2>Mode</h2>
     <div class="mode-toggle">
-      <button class="mode-btn" id="btn-line"     onclick="setMode('Line Following')">Line Follow</button>
-      <button class="mode-btn active" id="btn-manual"   onclick="setMode('Manual')">Manual</button>
+      <button class="mode-btn" id="btn-line" onclick="setMode('Line Following')">Line Follow</button>
+      <button class="mode-btn active" id="btn-manual" onclick="setMode('Manual')">Manual</button>
       <button class="mode-btn" id="btn-obstacle" onclick="setMode('Obstacle Detection')">Obstacle</button>
     </div>
   </div>
@@ -247,8 +245,7 @@
       <span class="slider-value" id="pwmDisplay">128</span>
       <span>255</span>
     </div>
-    <input type="range" id="pwmSlider" min="0" max="255" value="128"
-           oninput="onPWMChange(this.value)" />
+    <input type="range" id="pwmSlider" min="0" max="255" value="128" oninput="onPWMChange(this.value)">
   </div>
 
   <!-- D-Pad Card -->
@@ -262,34 +259,19 @@
       <div class="dpad">
         <!-- Row 1 -->
         <div></div>
-        <button class="ctrl-btn" id="btn-forward"
-                onpointerdown="sendCmd('forward')"
-                onpointerup="sendCmd('stop')"
-                onpointerleave="sendCmd('stop')">&#x2B06;</button>
+        <button class="ctrl-btn" id="btn-forward" onpointerdown="sendCmd('forward')" onpointerup="sendCmd('stop')" onpointerleave="sendCmd('stop')">⬆</button>
         <div></div>
 
         <!-- Row 2 -->
-        <button class="ctrl-btn" id="btn-left"
-                onpointerdown="sendCmd('left')"
-                onpointerup="sendCmd('stop')"
-                onpointerleave="sendCmd('stop')">&#x2B05;</button>
+        <button class="ctrl-btn" id="btn-left" onpointerdown="sendCmd('left')" onpointerup="sendCmd('stop')" onpointerleave="sendCmd('stop')">⬅</button>
 
-        <button class="ctrl-btn stop-btn" id="btn-stop"
-                onpointerdown="sendCmd('stop')"
-                onpointerup="releaseCmd()"
-                onpointerleave="releaseCmd()">STOP</button>
+        <button class="ctrl-btn stop-btn" id="btn-stop" onpointerdown="sendCmd('stop')" onpointerup="releaseCmd()" onpointerleave="releaseCmd()">STOP</button>
 
-        <button class="ctrl-btn" id="btn-right"
-                onpointerdown="sendCmd('right')"
-                onpointerup="sendCmd('stop')"
-                onpointerleave="sendCmd('stop')">&#x27A1;</button>
+        <button class="ctrl-btn" id="btn-right" onpointerdown="sendCmd('right')" onpointerup="sendCmd('stop')" onpointerleave="sendCmd('stop')">➡</button>
 
         <!-- Row 3 -->
         <div></div>
-        <button class="ctrl-btn" id="btn-backward"
-                onpointerdown="sendCmd('backward')"
-                onpointerup="sendCmd('stop')"
-                onpointerleave="sendCmd('stop')">&#x2B07;</button>
+        <button class="ctrl-btn" id="btn-backward" onpointerdown="sendCmd('backward')" onpointerup="sendCmd('stop')" onpointerleave="sendCmd('stop')">⬇</button>
         <div></div>
       </div>
     </div>
@@ -424,5 +406,5 @@
   setMode('Manual');
   initWS();
 </script>
-</body>
-</html>
+
+</body></html>
