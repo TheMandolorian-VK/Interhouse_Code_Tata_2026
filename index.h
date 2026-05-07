@@ -7,7 +7,7 @@ const char index_html[] PROGMEM = R"rawliteral(
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Bot Controller</title>
+  <title>Tata House Robot GUI</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -225,7 +225,7 @@ const char index_html[] PROGMEM = R"rawliteral(
 </head>
 <body>
 
-  <h1>&#x1F916; Bot Control</h1>
+  <h1>&#x1F916; Tata House Interhouse Bot GUI</h1>
 
   <!-- Connection Status -->
   <div class="status-bar">
