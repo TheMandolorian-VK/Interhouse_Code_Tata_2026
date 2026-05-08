@@ -282,30 +282,25 @@ void loop() {
     }
   }else if (botMode == "Line Following") {
       int sLread = digitalRead(lIR);
-		  int sRread = digitalRead(rIR);
+	  int sRread = digitalRead(rIR);
 		
-		  if(sLread == LOW && sRread == LOW){
-		    moveForward(linearPWM);
-		  }
-		  else if(sLread == HIGH && sRread == LOW){
-		    lastTurn = 1;
+	  if(sLread == LOW && sRread == LOW){
+	    moveForward(linearPWM);
+	  }else if(sLread == HIGH && sRread == LOW){
+		lastTurn = 1;
+		turnLeft(turnPWM, "LF");
+	  }else if(sLread == LOW && sRread == HIGH){
+	    lastTurn = 2;
+		turnRight(turnPWM, "LF");
+	  }else if(sLread == HIGH && sRread == HIGH){
+		 if(lastTurn == 1){
 		    turnLeft(turnPWM, "LF");
-		  }
-		  else if(sLread == LOW && sRread == HIGH){
-		    lastTurn = 2;
+	     }else if(lastTurn == 2){
 		    turnRight(turnPWM, "LF");
-		  }
-		  else if(sLread == HIGH && sRread == HIGH){
-		    if(lastTurn == 1){
-		      turnLeft(turnPWM, "LF");
-		    }
-		    else if(lastTurn == 2){
-		      turnRight(turnPWM, "LF");
-		    }
-		    else{
-		     moveBackward(linearPWM);  
-		    }
-		  }
+		 }else{
+		    moveBackward(linearPWM);  
+		 }
+	 }
   }else if (botMode == "Obstacle Detection") {
     float lDis = calculateDistance(lTrig, lEcho);
     delay(10); 
