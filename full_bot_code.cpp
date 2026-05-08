@@ -29,7 +29,7 @@ int enAspeed, enBspeed;
 int linearPWM = 160;
 int turnPWM = 140;
 int lastTurn = 0;
-int finalDelay = 400;
+int obstacleDelay = 200;
 
 void moveForward(int speedM) {
   enBspeed = speedM;
@@ -51,14 +51,14 @@ void turnLeft(int speedM, String mode) {
   if(mode == "LF"){
     digitalWrite(out1, LOW); digitalWrite(out2, HIGH);
     digitalWrite(out3, HIGH); digitalWrite(out4, LOW);
-		delay(30);
+	delay(30);
   }else if(mode == "Manual"){
     digitalWrite(out1, LOW); digitalWrite(out2, LOW);
     digitalWrite(out3, HIGH); digitalWrite(out4, LOW);  
   }else if(mode == "ObstacleD"){
-	  digitalWrite(out1, LOW); digitalWrite(out2, HIGH);
+	digitalWrite(out1, LOW); digitalWrite(out2, HIGH);
     digitalWrite(out3, HIGH); digitalWrite(out4, LOW);
-		delay(200);
+	delay(obstacleDelay);
   }
 }
 void turnRight(int speedM, String mode) {
@@ -71,14 +71,14 @@ void turnRight(int speedM, String mode) {
   if(mode == "LF"){
     digitalWrite(out1, HIGH); digitalWrite(out2, LOW);
     digitalWrite(out3, LOW); digitalWrite(out4, HIGH);
-	  delay(30);
+	delay(30);
   }else if(mode == "Manual"){
     digitalWrite(out1, HIGH); digitalWrite(out2, LOW);
     digitalWrite(out3, LOW); digitalWrite(out4, LOW);  
   }else if(mode == "ObstacleD"){
 	  digitalWrite(out1, HIGH); digitalWrite(out2, LOW);
     digitalWrite(out3, LOW); digitalWrite(out4, HIGH);
-		delay(200);
+	delay(obstacleDelay);
   }
 }
 
