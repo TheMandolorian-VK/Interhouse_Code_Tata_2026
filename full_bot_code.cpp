@@ -15,10 +15,11 @@ AsyncWebSocket ws("/ws");
 
 // ── Bot State Variables ───────────────────────────────────────────
 String botCommand = "stop";   // "forward" | "backward" | "left" | "right" | "stop"
-int    botPWM     = 128;      // 0–255
+int    manualPWM     = 128;      // 0–255
 String botMode    = "Manual"; // "Manual" | "Line Following" | "Obstacle Detection"
 
-int out1 = 22, out2 = 21, enA = 23, out3 = 19, out4 = 18, enB = 15, lIR = 13, rIR = 12;
+const uint8_t lEcho = 33, lTrig = 32, rEcho = 27, rTrig = 14, fEcho = 26, fTrig = 25, out1 = 22, out2 = 21, enA = 23, out3 = 19, out4 = 18, enB = 15, lIR = 13, rIR = 12;
+
 
 int freq = 10000;
 int res = 8;
@@ -28,6 +29,7 @@ int enAspeed, enBspeed;
 int linearPWM = 160;
 int turnPWM = 140;
 int lastTurn = 0;
+int finalDelay = 400;
 
 void moveForward(int speedM) {
   enBspeed = speedM;
@@ -49,9 +51,14 @@ void turnLeft(int speedM, String mode) {
   if(mode == "LF"){
     digitalWrite(out1, LOW); digitalWrite(out2, HIGH);
     digitalWrite(out3, HIGH); digitalWrite(out4, LOW);
+		delay(30);
   }else if(mode == "Manual"){
     digitalWrite(out1, LOW); digitalWrite(out2, LOW);
     digitalWrite(out3, HIGH); digitalWrite(out4, LOW);  
+  }else if(mode == "ObstacleD"){
+	  digitalWrite(out1, LOW); digitalWrite(out2, HIGH);
+    digitalWrite(out3, HIGH); digitalWrite(out4, LOW);
+		delay(200);
   }
 }
 void turnRight(int speedM, String mode) {
@@ -64,9 +71,14 @@ void turnRight(int speedM, String mode) {
   if(mode == "LF"){
     digitalWrite(out1, HIGH); digitalWrite(out2, LOW);
     digitalWrite(out3, LOW); digitalWrite(out4, HIGH);
+	  delay(30);
   }else if(mode == "Manual"){
     digitalWrite(out1, HIGH); digitalWrite(out2, LOW);
     digitalWrite(out3, LOW); digitalWrite(out4, LOW);  
+  }else if(mode == "ObstacleD"){
+	  digitalWrite(out1, HIGH); digitalWrite(out2, LOW);
+    digitalWrite(out3, LOW); digitalWrite(out4, HIGH);
+		delay(200);
   }
 }
 
@@ -88,7 +100,23 @@ void stopMotors() {
   digitalWrite(out1, LOW); digitalWrite(out2, LOW);
   digitalWrite(out3, LOW); digitalWrite(out4, LOW);
 }
-
+auto calculateDistance(int trigPin, int echoPin){
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  
+  // Sets the trigPin on HIGH state for 10 micro seconds
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  
+  // Read the echoPin, returns the sound wave travel time in microseconds
+  long duration = pulseIn(echoPin, HIGH, 30000);
+  
+  // Calculate the distance
+  float distanceCm = duration * 0.034 / 2;
+  
+  return distanceCm;
+}
 
 // ── WebSocket Event Handler ───────────────────────────────────────
 void onWsEvent(AsyncWebSocket*       server,
@@ -137,9 +165,9 @@ void onWsEvent(AsyncWebSocket*       server,
 
           // Update PWM
           if (doc.containsKey("pwm")) {
-            botPWM = doc["pwm"].as<int>();
-            botPWM = constrain(botPWM, 0, 255);
-            Serial.printf("  PWM     → %d\n", botPWM);
+            manualPWM = doc["pwm"].as<int>();
+            manualPWM = constrain(manualPWM, 0, 255);
+            Serial.printf("  PWM     → %d\n", manualPWM);
           }
 
           // Update command (only meaningful in Manual mode)
@@ -152,7 +180,7 @@ void onWsEvent(AsyncWebSocket*       server,
           StaticJsonDocument<128> ack;
           ack["status"] = "ok";
           ack["mode"]   = botMode;
-          ack["pwm"]    = botPWM;
+          ack["pwm"]    = manualPWM;
           ack["cmd"]    = botCommand;
 
           String ackStr;
@@ -178,6 +206,12 @@ void onWsEvent(AsyncWebSocket*       server,
 // ── Setup ─────────────────────────────────────────────────────────
 void setup() {
   Serial.begin(115200);
+  pinMode(lEcho, INPUT);
+  pinMode(lTrig, OUTPUT);
+  pinMode(fEcho, INPUT);
+  pinMode(fTrig, OUTPUT);
+  pinMode(rEcho, INPUT);
+  pinMode(rTrig, OUTPUT);
   pinMode(lIR, INPUT);
   pinMode(rIR, INPUT);
   pinMode(out1, OUTPUT);
@@ -225,10 +259,6 @@ void setup() {
   Serial.println("Open browser at: http://" + WiFi.localIP().toString());
 }
 
-void applyManualControl(){
-	Serial.println("Manual");
-}
-
 void runObstacleDetection(){
 	Serial.println("OD");
 }
@@ -239,38 +269,78 @@ void loop() {
   ws.cleanupClients();
 
   if (botMode == "Manual") {
-    applyManualControl();
+    if (botCommand == "forward") {
+    	moveForward(manualPWM);
+   }else if (botCommand == "backward") {
+    	moveBackward(manualPWM);
+   }else if (botCommand == "left") {
+    	turnLeft(manualPWM, "Manual");
+   }else if (botCommand == "right") {
+    	turnRight(manualPWM, "Manual");
+   }else if (botCommand == "stop") {
+    	stopMotors();
+    }
   }else if (botMode == "Line Following") {
       int sLread = digitalRead(lIR);
-	  int sRread = digitalRead(rIR);
-	
-	  if(sLread == LOW && sRread == LOW){
-	    moveForward(linearPWM);
-	  }
-	  else if(sLread == HIGH && sRread == LOW){
-	    lastTurn = 1;
-	    turnLeft(turnPWM, "LF");
-	  }
-	  else if(sLread == LOW && sRread == HIGH){
-	    lastTurn = 2;
-	    turnRight(turnPWM, "LF");
-	  }
-	  else if(sLread == HIGH && sRread == HIGH){
-	    if(lastTurn == 1){
-	      turnLeft(turnPWM, "LF");
-	      delay(10);
-	    }
-	    else if(lastTurn == 2){
-	      turnRight(turnPWM, "LF");
-	      delay(10);
-	    }
-	    else{
-	     moveBackward(linearPWM);  
-	    }
-	  }
+		  int sRread = digitalRead(rIR);
+		
+		  if(sLread == LOW && sRread == LOW){
+		    moveForward(linearPWM);
+		  }
+		  else if(sLread == HIGH && sRread == LOW){
+		    lastTurn = 1;
+		    turnLeft(turnPWM, "LF");
+		  }
+		  else if(sLread == LOW && sRread == HIGH){
+		    lastTurn = 2;
+		    turnRight(turnPWM, "LF");
+		  }
+		  else if(sLread == HIGH && sRread == HIGH){
+		    if(lastTurn == 1){
+		      turnLeft(turnPWM, "LF");
+		    }
+		    else if(lastTurn == 2){
+		      turnRight(turnPWM, "LF");
+		    }
+		    else{
+		     moveBackward(linearPWM);  
+		    }
+		  }
   }else if (botMode == "Obstacle Detection") {
-    runObstacleDetection();
-  }
+    float lDis = calculateDistance(lTrig, lEcho);
+    delay(10); 
+    float fDis = calculateDistance(fTrig, fEcho);
+    delay(10);
+    float rDis = calculateDistance(rTrig, rEcho);
 
-  delay(10);
+    Serial.printf("L: %.2f | F: %.2f | R: %.2f\n", lDis, fDis, rDis);
+
+  // 1. CRITICAL: Front Obstacle Handling
+    if (fDis < 15) { 
+      if (rDis > lDis) {
+        turnRight(turnPWM, "ObstacleD");
+        Serial.println("Front Blocked -> Turning Right");
+      } else {
+        turnLeft(turnPWM, "ObstacleD");
+        Serial.println("Front Blocked -> Turning Left");
+      }
+    } else if (lDis < 10) {
+    // Too close to left wall -> nudge right while moving
+      turnRight(turnPWM, "Manual"); 
+      Serial.println("Too close to Left -> Nudging Right");
+      delay(50); // Short burst to clear the wall
+    } 
+    else if (rDis < 10) {
+    // Too close to right wall -> nudge left while moving
+      turnLeft(turnPWM, "Manual");
+      Serial.println("Too close to Right -> Nudging Left");
+      delay(50); // Short burst to clear the wall
+    }
+
+  // 3. PATH CLEAR: Move forward
+    else {
+      moveForward(linearPWM);
+      Serial.println("Path Clear -> Forward");
+    }
+  }
 }
