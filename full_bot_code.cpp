@@ -316,7 +316,10 @@ void loop() {
     Serial.printf("L: %.2f | F: %.2f | R: %.2f\n", lDis, fDis, rDis);
 
   // 1. CRITICAL: Front Obstacle Handling
-    if (fDis < 15) { 
+	if (fDis == 0){
+		fDis = 999;
+	}
+    else if (fDis < 15) { 
       if (rDis > lDis) {
         turnRight(turnPWM, "ObstacleD");
         Serial.println("Front Blocked -> Turning Right");
